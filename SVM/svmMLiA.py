@@ -158,3 +158,12 @@ def smoP(dataMatIn, classLabels, C, toler, maxIter, kTup=('lin',0)):
         elif (alphaPairsChanged == 0): entireSet = True
         print "iteration number: %d" % iter
     return oS.b, oS.alphas
+
+def calcWs(alphas, dataArr, classLabels):
+    X = np.mat(dataArr)
+    labelMat = np.mat(classLabels).transpose()
+    m,n = np.shape(X)
+    w = np.zeros((n,1))
+    for i in range(m):
+        w += np.multiply(alphas[i]*labelMat[i], X[i,:].T)
+    return w
