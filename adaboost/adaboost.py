@@ -18,7 +18,7 @@ def buildStump(dataArr, classLabels, D):
     m,n = shape(dataMatrix)
     numSteps = 10.0; bestStump = {}; bestClasEst = mat(zeros((m,1)))
     minError = inf #init error sum, to +infinity
-    for i in range(n): #loop over all dimensions
+    for i in  range(n): #loop over all dimensions
         rangeMin = dataMatrix[:,i].min()
         rangeMax = dataMatrix[:,i].max()
         stepSize = (rangeMax-rangeMin)/numSteps
@@ -37,3 +37,49 @@ def buildStump(dataArr, classLabels, D):
                     bestStump['thresh'] = threshVal
                     bestStump['ineq'] = inequal
     return bestStump,minError,bestClasEst
+
+def adaBoostTrainDS(dataArr, classLabels, numIt=40):
+    weakClassArr = []
+    m = shape(dataArr)[0]
+    D = mat(ones((m,1))/m)
+    aggClassEst = mat(zeros((m,1)))
+    for i in range(numIt):
+        bestStump,error,classEst = buildStump(dataArr,classLabels,D)
+        print "D: ",D.T
+        alpha = float(0.5*log((1.0-error)/max(error,1e-16)))
+        bestStump['alpha'] = alpha
+        weakClassArr.append(bestStump)
+        print "classEst:", classEst.T
+        expon = multiply(-1*alpha*mat(classLabels).T,classEst)
+        D = multiply(D, exp(expon))
+        D = D/D.sum()
+        aggClassEst += alpha*classEst
+        print "aggClassEst: ", aggClassEst.T
+        aggErrors = multiply(sign(aggClassEst) != mat(classLabels).T, ones((m,1)))
+        errorRate = aggErrors.sum()/m
+        print "total error: ", errorRate, "\n"
+        if errorRate == 0.0: break
+    return weakClassArr
+
+def adaClassify(datToClass, classifierArr):
+    dataMatrix = mat(datToClass)
+    m = shape(dataMatrix)[0]
+    aggClassEst = mat(zeros((m,1)))
+    for i in range(len(classifierArr)):
+        classEst = stumpClassify(dataMatrix, classifierArr[i]['dim'], classifierArr[i]['thresh'], classifierArr[i]['ineq'])
+        aggClassEst += classifierArr[i]['alpha']*classEst
+        print aggClassEst
+    return sign(aggClassEst)
+
+def loadDataSet(filename):
+    numFeat = len(open(filename).readline().split('\t'))
+    dataMat = []; labelMat = []
+    fr = open(filename)
+    for line in fr.readlines():
+        lineArr = []
+        curLine = line.strip().split('\t')
+        for i in range(numFeat-1):
+            lineArr.append(float(curLine[i]))
+        dataMat.append(lineArr)
+        labelMat.append(curLine(-1))
+    return dataMat, labelMat
